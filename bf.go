@@ -67,6 +67,8 @@ func brainfuck(program string) {
 	stack := make([]int, 0)
 
 	// Preprocess program
+	// TODO: Generalize and pull out of this function
+	// needs to be usable in a debugger, also its a little ugly
 	for idx, symbol := range program {
 		switch symbol {
 		case '[':
@@ -122,7 +124,7 @@ func brainfuck(program string) {
 		case '>':
 			ptr += 1
 			if ptr >= len(mem) {
-				mem = append(mem, 0)
+				mem = append(mem, make([]byte, 30000)...)
 			}
 
 		case '.':
