@@ -3,12 +3,15 @@ package main
 import (
 	"os"
 	"fmt"
+	"log"
 	"flag"
+	"sync"
+	"net/http"
 	"io/ioutil"
 )
 
 var debug = flag.Bool("d", false, "Enables web debugger on port 8888")
-
+var wg sync.WaitGroup
 
 //
 // Parse flags and kick off interpreter
@@ -24,12 +27,45 @@ func main() {
 	} else {
 		if *debug {
 			// TODO: something
+			debug_server()
 		}
 
 		brainfuck(string(program))
 	}
+
 }
 
+
+//
+// Run debug server
+//
+func debug_server() {
+	wg.Add(1)
+	fmt.Println("Debugger launched, visit http://localhost:8888/ to begin.")
+
+	home := func(w http.ResponseWriter, r *http.Request) {
+		b, err := Asset("data/html/home.html")
+		if err != nil {
+			log.Println(err)
+		}
+		fmt.Fprintf(w, string(b))
+	}
+
+	static := func(w http.ResponseWriter, r *http.Request) {
+		log.Println(r.URL.Path)
+		b, err := Asset(r.URL.Path[1:])
+		if err != nil {
+			log.Println(err)
+		}
+		fmt.Fprintf(w, string(b))
+	}
+
+	go func() {
+		http.HandleFunc("/", home)
+		http.HandleFunc("/data/", static)
+		http.ListenAndServe(":8888", nil)
+	}()
+}
 
 //
 // Takes a program string and beautifies it
@@ -108,6 +144,9 @@ func brainfuck(program string) {
 
 	for program_counter := 0 ; program_counter < program_len ; program_counter++ {
 
+		// Wait for debugger
+		wg.Wait()
+
 		switch program[program_counter] {
 		case '+':
 			mem[ptr] += 1
@@ -131,7 +170,7 @@ func brainfuck(program string) {
 			fmt.Printf("%s", string(mem[ptr]))
 
 		case ',':
-			b:= make([]byte, 1)
+			b := make([]byte, 1)
 			os.Stdin.Read(b)
 			mem[ptr] = b[0]
 
